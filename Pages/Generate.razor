@@ -1,0 +1,280 @@
+﻿@page "/generate"
+@using QuickPassword.Enums
+
+@inject IJSRuntime JSRuntime
+@inject IToastService ToastService
+@inject IPasswordGeneratorService GeneratorService
+
+
+<div class="max-w-5xl mx-auto rounded-t-2xl overflow-hidden shadow-lg bg-white mt-6">
+    <div class="bg-gradient-to-r from-blue-300 to-yellow-300 font-bold text-3xl text-center p-2">
+        <p class="text-cyan-800"> .NET Blazor Password Generator</p>
+        <p class="text-slate-600 text-xs">Created by Cem Burak Çevik (LinkedIn: burakcevik76)</p>
+    </div>
+
+    <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden m-4">
+        <input @bind="password"
+               type="text" class="px-3 py-2 flex-1 bg-gray-50 appearance-none focus:outline-none" readonly="readonly">
+
+        <button @onclick="GeneratePassword"
+                class="px-3 py-2 bg-gray-200 font-medium text-gray-700 hover:bg-blue-300 focus:outline-none transition-colors duration-300">
+            🔄 Generate
+        </button>
+        <button @onclick="() => CopyPassword(password)"
+                class="px-3 py-2 bg-gray-200 font-medium text-gray-700 hover:bg-yellow-200 focus:outline-none transition-colors duration-300">
+            📄 Copy
+        </button>
+        <button @onclick="SavePassword"
+                class="px-3 py-2 bg-gray-200 font-medium text-gray-700 hover:bg-yellow-200 focus:outline-none transition-colors duration-300">
+            💾 Save
+        </button>
+    </div>
+
+    <div class="flex justify-around gap-x-6 my-4 mx-4">
+        <div class="flex">
+            @foreach (CharacterTypes type in Enum.GetValues(typeof(CharacterTypes)))
+            {
+                <div class="flex mr-4">
+                    <input @bind="characterTypes[type]" @bind:after="GeneratePassword"
+                           disabled="@IsDisable(type)"
+                           type="checkbox" id="@type" class="shrink-0 mt-0.5 h-4 w-4 border-gray-200 rounded text-blue-600 focus:ring-blue-500">
+                    <label class="text-sm text-gray-500 ms-3" for="@type">@type</label>
+                </div>
+            }
+        </div>
+
+        <div class="flex">
+            <div>
+                <div class="flex gap-x-6">
+                    @foreach (PasswordOptions option in Enum.GetValues(typeof(PasswordOptions)))
+                    {
+                        <div class="flex">
+                            <input @onchange="() => SetPasswordOptions(option)" checked="@IsOptionChecked(option)"
+                                   type="radio" id="@option" name="passwordOption" class="shrink-0 mt-0.5 h-4 w-4 border-gray-200 rounded-full disabled:opacity-50 disabled:pointer-events-none">
+                            <label for="@option" class="text-sm text-gray-500 ms-2">@option</label>
+                        </div>
+                    }
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="flex justify-center my-8">
+
+        <div>
+            <input type="text" class="px-3 py-2 w-22 bg-gray-50 border border-gray-300 rounded-lg mx-8" placeholder="Platform Name">
+        </div>
+
+
+        <div>
+            <input @onchange="OnPasswordLengthChanged"
+                   type="number" min="6" max="32" value="@passwordLength" class="px-3 py-2 w-22 bg-gray-50 border border-gray-300 rounded-lg">
+        </div>
+
+        <div class="flex flex-col mx-8">
+            <label class="text-gray-700">Password Length</label>
+            <input @oninput="OnPasswordLengthChanged"
+                   type="range" min="6" max="32" value="@passwordLength" class="w-96 h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer focus:outline-none">
+        </div>
+    </div>
+
+    <div class="bg-gradient-to-r from-blue-300 to-yellow-300 font-bold text-3xl p-2">
+        <p class="text-cyan-800"> 💾 Saved Passwords</p>
+    </div>
+
+    <ul class="max-w-full flex flex-col">
+        @if (savedPasswords.Any())
+        {
+            @foreach (string savePassword in savedPasswords.Reverse())
+            {
+                <li class="inline-flex items-center gap-x-2 py-3 px-4 text-sm font-medium bg-white border border-gray-200 text-gray-800 -mt-px">
+                    @savePassword
+                    <span class="ml-auto flex gap-x-2">
+                        <button @onclick="() => CopyPassword(savePassword)"
+                                class="px-3 py-2 bg-gray-200 text-gray-700 border-r border-gray-300 rounded-lg hover:bg-yellow-200 focus:outline-none transition-colors duration-300">
+                            📄 Copy
+                        </button>
+                        <button @onclick="() => DeletePassword(savePassword)"
+                                class="px-3 py-2 bg-gray-200 text-gray-700 border-r border-gray-300 rounded-lg hover:bg-red-400 focus:outline-none transition-colors duration-300">
+                            🗑 Delete
+                        </button>
+                    </span>
+                </li>
+            }
+        }
+        else
+        {
+            <li class="py-3 px-4 text-base font-medium text-gray-500 bg-gray-100 border border-gray-200 rounded-lg">
+                No saved passwords found.
+            </li>
+        }
+    </ul>
+
+    <div class="my-6 px-4 text-gray-700">
+
+        <p class="mb-4">
+            Şifrelerinizi güçlü ve benzersiz tutmak önemlidir. Güçlü şifreler, hesaplarınızı kötü niyetli kişilerin erişiminden korur ve verilerinizi güvende tutar. Her platform için farklı ve karmaşık şifreler kullanmak, güvenliği artırmanın en iyi yollarından biridir.
+        </p>
+        <p class="mb-4">
+            Şifrelerinizi saklarken güvenli yöntemler kullanmaya özen gösterin. Örneğin, güvenli bir şifre yöneticisi kullanarak şifrelerinizi güvende tutabilir ve yönetebilirsiniz. Ayrıca, iki faktörlü kimlik doğrulama gibi ek güvenlik önlemlerini etkinleştirmek de önemlidir.
+        </p>
+        <p>
+            İnternet üzerinde dolaşırken ve çeşitli platformlarda hesaplar oluştururken, güçlü şifre kullanımının önemini unutmayın ve veri güvenliğinizi her zaman ön planda tutun.
+        </p>
+    </div>
+</div>
+
+
+@code {
+    private string password = string.Empty;
+    private int passwordLength = 12;
+
+    private Dictionary<CharacterTypes, bool> characterTypes = new()
+    {
+        { CharacterTypes.Lowercase, true },
+        { CharacterTypes.Uppercase, true },
+        { CharacterTypes.Numbers, false },
+        { CharacterTypes.Symbols, false }
+    };
+
+    private Dictionary<PasswordOptions, Action>? passwordSettings;
+
+    private HashSet<string> savedPasswords = new();
+
+    private PasswordOptions selectedOption = PasswordOptions.Readable;
+
+    private bool containsUppercase = false;
+    private bool containsLowercase = true;
+    private bool containsNumbers = false;
+    private bool containsSymbols = false;
+
+
+    //Methods and properties\\
+
+    /// <summary>
+    /// Sayfa yüklendiğinde çalışan metot.
+    /// </summary>
+    protected override void OnInitialized()
+    {
+        passwordSettings = new Dictionary<PasswordOptions, Action>
+        {
+            { PasswordOptions.Basic, () =>
+                {
+                    characterTypes[CharacterTypes.Lowercase] = true;
+                    characterTypes[CharacterTypes.Uppercase] = true;
+                    characterTypes[CharacterTypes.Numbers] = false;
+                    characterTypes[CharacterTypes.Symbols] = false;
+                }
+            },
+
+            { PasswordOptions.Readable, () =>
+                {
+                    characterTypes[CharacterTypes.Lowercase] = true;
+                    characterTypes[CharacterTypes.Uppercase] = true;
+                    characterTypes[CharacterTypes.Numbers] = false;
+                    characterTypes[CharacterTypes.Symbols] = false;
+                }
+            },
+
+            { PasswordOptions.All, () =>
+                {
+                    characterTypes[CharacterTypes.Lowercase] = true;
+                    characterTypes[CharacterTypes.Uppercase] = true;
+                    characterTypes[CharacterTypes.Numbers] = true;
+                    characterTypes[CharacterTypes.Symbols] = true;
+                }
+            }
+        };
+
+        GeneratePassword();
+    }
+
+    private void GeneratePassword()
+    {
+        List<CharacterTypes> selectedCharacterTypes = characterTypes.Where(x => x.Value).Select(x => x.Key).ToList();
+        password = GeneratorService.GeneratePassword(passwordLength, selectedCharacterTypes);
+    }
+
+    private void CopyPassword(string selectedPassword)
+    {
+        if (!string.IsNullOrEmpty(selectedPassword))
+        {
+            ElementReference textArea = new ElementReference();
+
+            // Bir textarea oluşturuluyor
+            var textAreaElement = $"<textarea id='passwordTextArea'>{selectedPassword}</textarea>";
+            var script = $@"
+            var textArea = document.createElement('textarea');
+            textArea.value = '{selectedPassword}';
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);";
+
+            JSRuntime.InvokeVoidAsync("eval", script);
+
+            ToastService.ShowSuccess("Password copied to clipboard..");
+        }
+    }
+
+    private void SavePassword()
+    {
+        if (string.IsNullOrEmpty(password) || savedPasswords.Contains(password))
+            return;
+
+        savedPasswords.Add(password);
+    }
+
+    private void DeletePassword(string selectedPassword)
+    {
+        if (savedPasswords.Contains(selectedPassword))
+            savedPasswords.Remove(selectedPassword);
+
+            ToastService.ShowInfo("Password deleted..");
+    }
+
+
+    
+
+
+    /// <summary>
+    /// Seçilen opsiyona göre karakter tiplerini devre dışı bırakır.
+    /// </summary>
+    /// <param name="type">Karakter tipi</param>
+    /// <returns>True: Karater tipi seçilemez, False: Karakter tipi seçilebilir.</returns>
+    private bool IsDisable(CharacterTypes type) => selectedOption == PasswordOptions.Basic && (type == CharacterTypes.Numbers || type == CharacterTypes.Symbols);
+
+    /// <summary>
+    /// Seçilen opsiyonun işaretli olup olmadığını kontrol eder.
+    /// </summary>
+    /// <param name="option">Seçili opsiyon</param>
+    /// <returns></returns>
+    private bool IsOptionChecked(PasswordOptions option) => option == selectedOption;
+
+    /// <summary>
+    /// İlgili input alanlarındaki değerler değiştiğinde 'passwordLength' değişkenini günceller ve 'GeneratePassword' metotunu çağırır.'
+    /// </summary>
+    /// <param name="e">İnputtan gelen değer</param>
+    private void OnPasswordLengthChanged(ChangeEventArgs e)
+    {
+        if (e.Value is null)
+            return;
+
+        passwordLength = Convert.ToByte(e.Value);
+        GeneratePassword();
+    }
+
+    private void SetPasswordOptions(PasswordOptions option)
+    {
+        if (passwordSettings!.ContainsKey(option))
+        {
+            selectedOption = option;
+
+            passwordSettings[option].Invoke();
+            StateHasChanged();
+
+            GeneratePassword();
+        }
+    }
+}
